@@ -95,7 +95,7 @@ jobs:
       - name: Build toolchain
         run: |
           export TERM=dumb
-          CT_LOG_PROGRESS_BAR=0 ct-ng build
+          CT_LOG_PROGRESS_BAR=n ct-ng build
 
       - name: Pack toolchain
         run: |
@@ -179,7 +179,7 @@ jobs:
       - name: Build toolchain
         run: |
           export TERM=dumb
-          su -s /bin/sh builder -c "CT_LOG_PROGRESS_BAR=0 ct-ng build"
+          su -s /bin/sh builder -c "CT_LOG_PROGRESS_BAR=n ct-ng build"
 
       - name: Pack toolchain
         run: |
