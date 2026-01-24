@@ -1,0 +1,206 @@
+name: Build Toolchains
+
+on:
+  push:
+    tags:
+      - "v*"
+  release:
+    types: [created]
+
+jobs:
+  build-glibc:
+    name: Build (glibc) - ${{ matrix.name }}
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: old
+            runs_on: ubuntu-20.04
+            os_label: ubuntu
+            os_ver: 20.04
+          - name: new
+            runs_on: ubuntu-24.04
+            os_label: ubuntu
+            os_ver: 24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bison \
+            build-essential \
+            crosstool-ng \
+            file \
+            flex \
+            gawk \
+            gperf \
+            help2man \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libtool \
+            make \
+            patch \
+            perl \
+            python3 \
+            rsync \
+            texinfo \
+            unzip \
+            wget \
+            xz-utils \
+            zlib1g-dev
+
+      - name: Cache tarballs
+        uses: actions/cache@v4
+        with:
+          path: .tarballs
+          key: tarballs-${{ runner.os }}-glibc-${{ matrix.name }}-${{ hashFiles('.config') }}
+
+      - name: Read versions
+        id: vers
+        run: |
+          gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
+          newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
+          if [ -z "$newlib_ver" ]; then
+            newlib_ver=$(sed -n 's/^CT_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
+          fi
+          echo "gcc=$gcc_ver" >> "$GITHUB_OUTPUT"
+          echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
+          echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare config
+        run: |
+          sed -i \
+            -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
+            -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
+            .config
+          ct-ng oldconfig
+
+      - name: Build toolchain
+        run: ct-ng build
+
+      - name: Pack toolchain
+        run: |
+          name="toolchain-${{ matrix.os_label }}-${{ matrix.os_ver }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          tar -C x-tools -cJf "$name" .
+          echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_NAME }}
+
+  build-musl:
+    name: Build (musl)
+    runs-on: ubuntu-latest
+    container: alpine:3.23
+    steps:
+      - name: Install dependencies
+        run: |
+          apk add --no-cache \
+            bash \
+            bison \
+            build-base \
+            crosstool-ng \
+            file \
+            flex \
+            gawk \
+            git \
+            gperf \
+            libtool \
+            make \
+            ncurses-dev \
+            patch \
+            perl \
+            python3 \
+            rsync \
+            texinfo \
+            unzip \
+            wget \
+            xz \
+            zlib-dev
+
+      - uses: actions/checkout@v4
+
+      - name: Cache tarballs
+        uses: actions/cache@v4
+        with:
+          path: .tarballs
+          key: tarballs-${{ runner.os }}-musl-${{ hashFiles('.config') }}
+
+      - name: Read versions
+        id: vers
+        run: |
+          gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
+          newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
+          if [ -z "$newlib_ver" ]; then
+            newlib_ver=$(sed -n 's/^CT_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
+          fi
+          echo "gcc=$gcc_ver" >> "$GITHUB_OUTPUT"
+          echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
+          echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare config
+        run: |
+          sed -i \
+            -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
+            -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
+            .config
+          ct-ng oldconfig
+
+      - name: Build toolchain
+        run: ct-ng build
+
+      - name: Pack toolchain
+        run: |
+          name="toolchain-alpine-3.23-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          tar -C x-tools -cJf "$name" .
+          echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: ${{ env.ARTIFACT_NAME }}
+
+  release:
+    name: Publish Release
+    needs:
+      - build-glibc
+      - build-musl
+    runs-on: ubuntu-latest
+    env:
+      TAG_NAME: ${{ github.event.release.tag_name || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read versions
+        id: vers
+        run: |
+          gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
+          newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
+          if [ -z "$newlib_ver" ]; then
+            newlib_ver=$(sed -n 's/^CT_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
+          fi
+          echo "gcc=$gcc_ver" >> "$GITHUB_OUTPUT"
+          echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
+          echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG_NAME }}
+          name: toolchains-${{ env.TAG_NAME }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}-ubuntu20.04-ubuntu24.04-alpine3.23
+          draft: ${{ github.event.release.draft || false }}
+          prerelease: ${{ github.event.release.prerelease || false }}
+          files: dist/**/toolchain-*.tar.xz
