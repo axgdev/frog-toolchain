@@ -87,15 +87,18 @@ jobs:
           sed -i \
             -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
             -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
+            -e 's/^CT_LOG_PROGRESS_BAR=.*/# CT_LOG_PROGRESS_BAR is not set/' \
             -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
             -e "s/^CT_LOAD=.*/CT_LOAD=${jobs}/" \
             .config
+          if ! grep -q '^# CT_LOG_PROGRESS_BAR is not set' .config; then
+            echo '# CT_LOG_PROGRESS_BAR is not set' >> .config
+          fi
           ct-ng oldconfig
 
       - name: Build toolchain
         run: |
-          export TERM=dumb
-          CT_LOG_PROGRESS_BAR=n ct-ng build
+          ct-ng build
 
       - name: Pack toolchain
         run: |
@@ -171,15 +174,18 @@ jobs:
           sed -i \
             -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
             -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
+            -e 's/^CT_LOG_PROGRESS_BAR=.*/# CT_LOG_PROGRESS_BAR is not set/' \
             -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
             -e "s/^CT_LOAD=.*/CT_LOAD=${jobs}/" \
             .config
+          if ! grep -q '^# CT_LOG_PROGRESS_BAR is not set' .config; then
+            echo '# CT_LOG_PROGRESS_BAR is not set' >> .config
+          fi
           su -s /bin/sh builder -c "ct-ng oldconfig"
 
       - name: Build toolchain
         run: |
-          export TERM=dumb
-          su -s /bin/sh builder -c "CT_LOG_PROGRESS_BAR=n ct-ng build"
+          su -s /bin/sh builder -c "ct-ng build"
 
       - name: Pack toolchain
         run: |
