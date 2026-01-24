@@ -1,8 +1,7 @@
 # frog-toolchain
 
 This repository contains a crosstool-ng configuration and patches to build the
-MIPS toolchain used for the SF2000, GB300 and other devices from the frog
-family.
+MIPS toolchain used for the SF2000, GB300 and other frog devices.
 
 ## Local build
 
@@ -27,9 +26,8 @@ The workflow builds two variants and publishes a release with the artifacts:
 - glibc (Ubuntu 22.04)
 - musl (Alpine 3.23)
 
-The workflow is triggered by:
-- Git tag push matching `v*`, or
-- Draft release creation in GitHub (uses the release tag).
+The workflow is triggered by **creating a GitHub release** (draft or published).
+It uses the release tag for naming.
 
 Artifacts are named with the OS and tool versions from `.config`, for example:
 
@@ -39,15 +37,8 @@ toolchain-ubuntu-22.04-gcc15.2.0-binutils2.45-newlib4.5.0.20241231.tar.xz
 
 Release names include the tag and the toolchain versions.
 
-To trigger a build by tag:
-
-```sh
-git tag v1.0.0
-git push origin v1.0.0
-```
-
-To trigger a build via draft release:
-- Create a new release in GitHub with tag `vX.Y.Z` and check "Draft".
+To trigger a build:
+- Create a new release in GitHub with tag `vX.Y.Z`.
 - The workflow will run and attach artifacts to that release.
 
 ## Notes

@@ -1,9 +1,6 @@
 name: Build Toolchains
 
 on:
-  push:
-    tags:
-      - "v*"
   release:
     types: [created]
 
@@ -86,14 +83,19 @@ jobs:
 
       - name: Prepare config
         run: |
+          jobs=$(nproc)
           sed -i \
             -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
             -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
+            -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
+            -e "s/^CT_LOAD=.*/CT_LOAD=${jobs}/" \
             .config
           ct-ng oldconfig
 
       - name: Build toolchain
-        run: ct-ng build
+        run: |
+          export TERM=dumb
+          CT_LOG_PROGRESS_BAR=0 ct-ng build
 
       - name: Pack toolchain
         run: |
@@ -165,15 +167,19 @@ jobs:
 
       - name: Prepare config
         run: |
+          jobs=$(nproc)
           sed -i \
             -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
             -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
+            -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
+            -e "s/^CT_LOAD=.*/CT_LOAD=${jobs}/" \
             .config
           su -s /bin/sh builder -c "ct-ng oldconfig"
 
       - name: Build toolchain
         run: |
-          su -s /bin/sh builder -c "ct-ng build"
+          export TERM=dumb
+          su -s /bin/sh builder -c "CT_LOG_PROGRESS_BAR=0 ct-ng build"
 
       - name: Pack toolchain
         run: |
@@ -194,7 +200,7 @@ jobs:
       - build-musl
     runs-on: ubuntu-latest
     env:
-      TAG_NAME: ${{ github.event.release.tag_name || github.ref_name }}
+      TAG_NAME: ${{ github.event.release.tag_name }}
     steps:
       - uses: actions/checkout@v4
 
