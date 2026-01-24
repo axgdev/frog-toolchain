@@ -4,8 +4,13 @@ TOPDIR ?= $(CURDIR)
 CONFIG ?= .config
 JOBS ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 SUDO ?= sudo
+CTNG_VER ?= 1.28.0
+CTNG_SRC_DIR ?= $(TOPDIR)/.ctng-src
+CTNG_TARBALL ?= $(CTNG_SRC_DIR)/crosstool-ng-$(CTNG_VER).tar.xz
+CTNG_URL ?= https://github.com/crosstool-ng/crosstool-ng/releases/download/crosstool-ng-$(CTNG_VER)/crosstool-ng-$(CTNG_VER).tar.xz
 
-.PHONY: install-deps-ubuntu install-deps-alpine ci-prepare oldconfig build pack
+.PHONY: install-deps-ubuntu install-deps-alpine install-ctng-ubuntu \
+	ci-prepare oldconfig build toolchain pack
 
 install-deps-ubuntu:
 	$(SUDO) apt-get update
@@ -59,6 +64,20 @@ install-deps-alpine:
 		xz \
 		zlib-dev
 
+install-ctng-ubuntu:
+	@if command -v ct-ng >/dev/null 2>&1; then \
+		ct-ng --version; \
+		exit 0; \
+	fi
+	@mkdir -p $(CTNG_SRC_DIR)
+	@wget -q -O $(CTNG_TARBALL) $(CTNG_URL)
+	@tar -xf $(CTNG_TARBALL) -C $(CTNG_SRC_DIR)
+	@cd $(CTNG_SRC_DIR)/crosstool-ng-$(CTNG_VER) && \
+		./configure --prefix=/usr/local && \
+		make -j$(JOBS) && \
+		$(SUDO) make install
+	@ct-ng --version
+
 ci-prepare:
 	sed -i \
 		-e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="$${CT_TOP_DIR}/.tarballs"|' \
@@ -81,6 +100,8 @@ oldconfig:
 
 build:
 	ct-ng build
+
+toolchain: ci-prepare build
 
 pack:
 	@if [ -z "$(ARTIFACT_NAME)" ]; then \

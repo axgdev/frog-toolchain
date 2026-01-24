@@ -3,17 +3,23 @@
 This repository contains a crosstool-ng configuration and patches to build the
 MIPS toolchain used for the SF2000, GB300 and other frog devices.
 
-## Local build
+## Local build (Ubuntu 22.04+)
 
-Requirements (host): crosstool-ng, build-essential, bison, flex, gawk, gperf,
-libtool, make, patch, perl, python3, rsync, texinfo, unzip, wget, xz-utils,
-zlib1g-dev, and ncurses dev headers.
-
-Build steps:
+From a clean Ubuntu machine:
 
 ```sh
-ct-ng oldconfig
-ct-ng build
+make install-deps-ubuntu
+make install-ctng-ubuntu
+make toolchain
+```
+
+## Local build (Alpine 3.23+)
+
+From a clean Alpine machine:
+
+```sh
+make install-deps-alpine
+make toolchain
 ```
 
 Output:

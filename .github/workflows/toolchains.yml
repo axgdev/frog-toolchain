@@ -23,21 +23,9 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: make install-deps-ubuntu
-
-      - name: Install crosstool-ng
         run: |
-          if ! command -v ct-ng >/dev/null 2>&1; then
-            CTNG_VER=1.28.0
-            wget -q "https://github.com/crosstool-ng/crosstool-ng/releases/download/crosstool-ng-${CTNG_VER}/crosstool-ng-${CTNG_VER}.tar.xz"
-            tar -xf "crosstool-ng-${CTNG_VER}.tar.xz"
-            cd "crosstool-ng-${CTNG_VER}"
-            ./configure --prefix=/usr/local
-            make -j"$(nproc)"
-            sudo make install
-            cd ..
-          fi
-          ct-ng --version
+          make install-deps-ubuntu
+          make install-ctng-ubuntu
 
       - name: Cache tarballs
         uses: actions/cache@v4
@@ -58,11 +46,8 @@ jobs:
           echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
           echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
 
-      - name: Prepare config
-        run: make ci-prepare
-
       - name: Build toolchain
-        run: make build
+        run: make toolchain
 
       - name: Pack toolchain
         run: |
@@ -110,11 +95,8 @@ jobs:
           echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
           echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
 
-      - name: Prepare config
-        run: su -s /bin/sh builder -c "make ci-prepare"
-
       - name: Build toolchain
-        run: su -s /bin/sh builder -c "make build"
+        run: su -s /bin/sh builder -c "make toolchain"
 
       - name: Pack toolchain
         run: |
