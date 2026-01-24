@@ -1,0 +1,79 @@
+diff --git a/libgloss/mips/cfe_mem.c b/libgloss/mips/cfe_mem.c
+index 87caabf..7b37142 100644
+--- a/libgloss/mips/cfe_mem.c
++++ b/libgloss/mips/cfe_mem.c
+@@ -31,6 +31,7 @@
+  *    BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+  */
+ 
++#include <stdint.h>
+ #include "cfe_api.h"
+ 
+ /* Structure filled in by get_mem_info.  Only the size field is
+@@ -47,10 +48,10 @@ void *get_mem_info (struct s_mem *);
+ extern char _end[];
+ 
+ /* Address immediately after available memory.  */
+-static unsigned long memtop;
++static uintptr_t memtop;
+ 
+ /* Program stack size.  */
+-static unsigned long stack_size;
++static uintptr_t stack_size;
+ 
+ void
+ __libcfe_meminit (void)
+@@ -58,7 +59,7 @@ __libcfe_meminit (void)
+   /* If the user has provided a memory-limit function, use it to
+      determine the end of usable memory.  */
+   if (&__libcfe_mem_limit != NULL)
+-    memtop = __libcfe_mem_limit ();
++    memtop = (uintptr_t)__libcfe_mem_limit ();
+   else
+     {
+       uint64_t start, length, type;
+@@ -80,7 +81,7 @@ __libcfe_meminit (void)
+             {
+               /* Did not find an available entry containing _end.
+                  Assume a minimal amount of memory (1MB).  */
+-              memtop = _end + (1 * 1024 * 1024);
++              memtop = (uintptr_t)_end + (1u * 1024u * 1024u);
+               break;
+             }
+ 
+@@ -92,7 +93,7 @@ __libcfe_meminit (void)
+ 	     a winner.  */
+           if (end_pa >= start && end_pa < (start + length))
+             {
+-              memtop = (start + length) | end_segbits;
++              memtop = (uintptr_t)((start + length) | end_segbits);
+               break;
+             }
+         }
+@@ -101,14 +102,14 @@ __libcfe_meminit (void)
+   /* If the user has provided a memory-limit function, use it to
+      determine the end of usable memory.  */
+   if (&__libcfe_stack_size != NULL)
+-    stack_size = __libcfe_stack_size ();
++    stack_size = (uintptr_t)__libcfe_stack_size ();
+   else
+-    stack_size = (32 * 1024);		/* Default = 32KB.  */
++    stack_size = (32u * 1024u);		/* Default = 32KB.  */
+ 
+   /* Chop the top of memory to a 32-byte aligned location, and
+      round the stack size up to a 32-byte multiple.  */
+-  memtop = memtop & ~(unsigned long)31;
+-  stack_size = (stack_size + 31) & ~(unsigned long)31;
++  memtop = memtop & ~(uintptr_t)31;
++  stack_size = (stack_size + 31) & ~(uintptr_t)31;
+ }
+ 
+ void *
+@@ -125,6 +126,6 @@ __libcfe_stack_top (void)
+ void *
+ get_mem_info (struct s_mem *meminfo)
+ {
+-  meminfo->size = (char *)(memtop - stack_size) - _end;
++  meminfo->size = (unsigned int)((memtop - stack_size) - (uintptr_t)_end);
+   return (void *) memtop;
+ }

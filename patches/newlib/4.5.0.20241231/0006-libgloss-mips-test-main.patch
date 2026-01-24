@@ -1,0 +1,17 @@
+diff --git a/libgloss/mips/test.c b/libgloss/mips/test.c
+index a993479..57e133b 100644
+--- a/libgloss/mips/test.c
++++ b/libgloss/mips/test.c
+@@ -1,4 +1,4 @@
+-main()
++int main(void)
+ {
+   outbyte ('&');
+   outbyte ('@');
+@@ -9,5 +9,5 @@ main()
+   
+   print ("\r\nDone...");
+ 
+-  return;
++  return 0;
+ }
