@@ -86,6 +86,7 @@ jobs:
           jobs=$(nproc)
           sed -i \
             -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
+            -e 's|^CT_LOCAL_PATCH_DIR=.*|CT_LOCAL_PATCH_DIR="${CT_TOP_DIR}/patches"|' \
             -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
             -e 's/^CT_LOG_PROGRESS_BAR=.*/# CT_LOG_PROGRESS_BAR is not set/' \
             -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
@@ -97,8 +98,7 @@ jobs:
           ct-ng oldconfig
 
       - name: Build toolchain
-        run: |
-          ct-ng build
+        run: ct-ng build
 
       - name: Pack toolchain
         run: |
@@ -173,6 +173,7 @@ jobs:
           jobs=$(nproc)
           sed -i \
             -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
+            -e 's|^CT_LOCAL_PATCH_DIR=.*|CT_LOCAL_PATCH_DIR="${CT_TOP_DIR}/patches"|' \
             -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
             -e 's/^CT_LOG_PROGRESS_BAR=.*/# CT_LOG_PROGRESS_BAR is not set/' \
             -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
@@ -184,8 +185,7 @@ jobs:
           su -s /bin/sh builder -c "ct-ng oldconfig"
 
       - name: Build toolchain
-        run: |
-          su -s /bin/sh builder -c "ct-ng build"
+        run: su -s /bin/sh builder -c "ct-ng build"
 
       - name: Pack toolchain
         run: |
