@@ -9,16 +9,8 @@ on:
 
 jobs:
   build-glibc:
-    name: Build (glibc) - ${{ matrix.name }}
-    runs-on: ${{ matrix.runs_on }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: old
-            runs_on: ubuntu-22.04
-            os_label: ubuntu
-            os_ver: 22.04
+    name: Build (ubuntu-glibc)
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
 
@@ -31,7 +23,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .tarballs
-          key: tarballs-${{ runner.os }}-glibc-${{ matrix.name }}-${{ hashFiles('.config') }}
+          key: tarballs-${{ runner.os }}-glibc-${{ hashFiles('.config') }}
 
       - name: Read versions
         id: vers
@@ -51,7 +43,7 @@ jobs:
 
       - name: Pack toolchain
         run: |
-          name="toolchain-${{ matrix.os_label }}-${{ matrix.os_ver }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-ubuntu-22.04-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           make pack ARTIFACT_NAME="$name"
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
@@ -62,7 +54,7 @@ jobs:
           path: ${{ env.ARTIFACT_NAME }}
 
   build-musl:
-    name: Build (musl)
+    name: Build (alpine-musl)
     runs-on: ubuntu-latest
     container: alpine:3.23
     steps:
