@@ -58,13 +58,13 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:3.23
     steps:
+      - uses: actions/checkout@v4
+
       - name: Install make
         run: apk add --no-cache make
 
       - name: Install dependencies
         run: make install-deps-alpine
-
-      - uses: actions/checkout@v4
 
       - name: Prepare non-root user
         run: |
