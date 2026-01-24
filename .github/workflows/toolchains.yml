@@ -23,33 +23,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            autoconf \
-            automake \
-            bison \
-            build-essential \
-            file \
-            flex \
-            gawk \
-            gperf \
-            help2man \
-            libncurses5-dev \
-            libncursesw5-dev \
-            libtool \
-            libtool-bin \
-            make \
-            patch \
-            perl \
-            pkg-config \
-            python3 \
-            rsync \
-            texinfo \
-            unzip \
-            wget \
-            xz-utils \
-            zlib1g-dev
+        run: make install-deps-ubuntu
 
       - name: Install crosstool-ng
         run: |
@@ -85,28 +59,15 @@ jobs:
           echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
 
       - name: Prepare config
-        run: |
-          jobs=$(nproc)
-          sed -i \
-            -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
-            -e 's|^CT_LOCAL_PATCH_DIR=.*|CT_LOCAL_PATCH_DIR="${CT_TOP_DIR}/patches"|' \
-            -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
-            -e 's/^CT_LOG_PROGRESS_BAR=.*/# CT_LOG_PROGRESS_BAR is not set/' \
-            -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
-            -e "s/^CT_LOAD=.*/CT_LOAD=${jobs}/" \
-            .config
-          if ! grep -q '^# CT_LOG_PROGRESS_BAR is not set' .config; then
-            echo '# CT_LOG_PROGRESS_BAR is not set' >> .config
-          fi
-          ct-ng oldconfig
+        run: make ci-prepare
 
       - name: Build toolchain
-        run: ct-ng build
+        run: make build
 
       - name: Pack toolchain
         run: |
           name="toolchain-${{ matrix.os_label }}-${{ matrix.os_ver }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
-          tar -C x-tools -cJf "$name" .
+          make pack ARTIFACT_NAME="$name"
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
       - name: Upload artifact
@@ -121,29 +82,7 @@ jobs:
     container: alpine:3.23
     steps:
       - name: Install dependencies
-        run: |
-          apk add --no-cache \
-            bash \
-            bison \
-            build-base \
-            crosstool-ng \
-            file \
-            flex \
-            gawk \
-            git \
-            gperf \
-            libtool \
-            make \
-            ncurses-dev \
-            patch \
-            perl \
-            python3 \
-            rsync \
-            texinfo \
-            unzip \
-            wget \
-            xz \
-            zlib-dev
+        run: make install-deps-alpine
 
       - uses: actions/checkout@v4
 
@@ -172,28 +111,15 @@ jobs:
           echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
 
       - name: Prepare config
-        run: |
-          jobs=$(nproc)
-          sed -i \
-            -e 's|^CT_LOCAL_TARBALLS_DIR=.*|CT_LOCAL_TARBALLS_DIR="${CT_TOP_DIR}/.tarballs"|' \
-            -e 's|^CT_LOCAL_PATCH_DIR=.*|CT_LOCAL_PATCH_DIR="${CT_TOP_DIR}/patches"|' \
-            -e 's|^CT_PREFIX_DIR=.*|CT_PREFIX_DIR="${CT_TOP_DIR}/x-tools/${CT_HOST:+HOST-${CT_HOST}/}${CT_TARGET}"|' \
-            -e 's/^CT_LOG_PROGRESS_BAR=.*/# CT_LOG_PROGRESS_BAR is not set/' \
-            -e "s/^CT_PARALLEL_JOBS=.*/CT_PARALLEL_JOBS=${jobs}/" \
-            -e "s/^CT_LOAD=.*/CT_LOAD=${jobs}/" \
-            .config
-          if ! grep -q '^# CT_LOG_PROGRESS_BAR is not set' .config; then
-            echo '# CT_LOG_PROGRESS_BAR is not set' >> .config
-          fi
-          su -s /bin/sh builder -c "ct-ng oldconfig"
+        run: su -s /bin/sh builder -c "make ci-prepare"
 
       - name: Build toolchain
-        run: su -s /bin/sh builder -c "ct-ng build"
+        run: su -s /bin/sh builder -c "make build"
 
       - name: Pack toolchain
         run: |
           name="toolchain-alpine-3.23-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
-          tar -C x-tools -cJf "$name" .
+          make pack ARTIFACT_NAME="$name"
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
       - name: Upload artifact
