@@ -58,6 +58,9 @@ jobs:
     runs-on: ubuntu-latest
     container: alpine:3.23
     steps:
+      - name: Install make
+        run: apk add --no-cache make
+
       - name: Install dependencies
         run: make install-deps-alpine
 

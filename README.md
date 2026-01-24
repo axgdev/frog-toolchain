@@ -8,6 +8,7 @@ MIPS toolchain used for the SF2000, GB300 and other frog devices.
 From a clean Ubuntu machine:
 
 ```sh
+sudo apt-get install -y make
 make install-deps-ubuntu
 make install-ctng-ubuntu
 make toolchain
@@ -18,6 +19,7 @@ make toolchain
 From a clean Alpine machine:
 
 ```sh
+apk add --no-cache make
 make install-deps-alpine
 make toolchain
 ```
