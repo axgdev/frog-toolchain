@@ -19,10 +19,6 @@ jobs:
             runs_on: ubuntu-22.04
             os_label: ubuntu
             os_ver: 22.04
-          - name: new
-            runs_on: ubuntu-24.04
-            os_label: ubuntu
-            os_ver: 24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -223,7 +219,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: toolchains-${{ env.TAG_NAME }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}-ubuntu22.04-ubuntu24.04-alpine3.23
+          name: toolchains-${{ env.TAG_NAME }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}-ubuntu22.04-alpine3.23
           draft: ${{ github.event.release.draft || false }}
           prerelease: ${{ github.event.release.prerelease || false }}
           files: dist/**/toolchain-*.tar.xz
