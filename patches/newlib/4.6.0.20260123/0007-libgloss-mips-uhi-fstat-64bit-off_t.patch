@@ -1,0 +1,48 @@
+diff --git a/libgloss/mips/uhi/uhi_fstat.c b/libgloss/mips/uhi/uhi_fstat.c
+index 48788c6..d4f98fd 100644
+--- a/libgloss/mips/uhi/uhi_fstat.c
++++ b/libgloss/mips/uhi/uhi_fstat.c
+@@ -97,24 +97,24 @@ fstat (int file, struct stat *sbuf)
+   __check (__LINE__, offsetof (struct stat, st_blocks) == 80);
+   __check (__LINE__, offsetof (struct stat, st_spare4) == 88);
+ #else
+-  __check (__LINE__, sizeof (struct stat) == 60);
++  __check (__LINE__, sizeof (struct stat) == 64);
+   __check (__LINE__, offsetof (struct stat, st_dev) == 0);
+   __check (__LINE__, offsetof (struct stat, st_ino) == 2);
+   __check (__LINE__, offsetof (struct stat, st_mode) == 4);
+   __check (__LINE__, offsetof (struct stat, st_nlink) == 8);
+   __check (__LINE__, offsetof (struct stat, st_uid) == 10);
+   __check (__LINE__, offsetof (struct stat, st_gid) == 12);
+   __check (__LINE__, offsetof (struct stat, st_rdev) == 14);
+   __check (__LINE__, offsetof (struct stat, st_size) == 16);
+-  __check (__LINE__, offsetof (struct stat, st_atime) == 20);
+-  __check (__LINE__, offsetof (struct stat, st_spare1) == 24);
+-  __check (__LINE__, offsetof (struct stat, st_mtime) == 28);
+-  __check (__LINE__, offsetof (struct stat, st_spare2) == 32);
+-  __check (__LINE__, offsetof (struct stat, st_ctime) == 36);
+-  __check (__LINE__, offsetof (struct stat, st_spare3) == 40);
+-  __check (__LINE__, offsetof (struct stat, st_blksize) == 44);
+-  __check (__LINE__, offsetof (struct stat, st_blocks) == 48);
+-  __check (__LINE__, offsetof (struct stat, st_spare4) == 52);
++  __check (__LINE__, offsetof (struct stat, st_atime) == 24);
++  __check (__LINE__, offsetof (struct stat, st_spare1) == 28);
++  __check (__LINE__, offsetof (struct stat, st_mtime) == 32);
++  __check (__LINE__, offsetof (struct stat, st_spare2) == 36);
++  __check (__LINE__, offsetof (struct stat, st_ctime) == 40);
++  __check (__LINE__, offsetof (struct stat, st_spare3) == 44);
++  __check (__LINE__, offsetof (struct stat, st_blksize) == 48);
++  __check (__LINE__, offsetof (struct stat, st_blocks) == 52);
++  __check (__LINE__, offsetof (struct stat, st_spare4) == 56);
+ #endif
+ 
+   __asm__ __volatile__ (" # %0,%1 = fstat(%2, %3) op=%4\n"
+@@ -143,7 +143,7 @@ fstat (int file, struct stat *sbuf)
+       sbuf->st_uid = hbuf.st_uid;
+       sbuf->st_gid = hbuf.st_gid;
+       sbuf->st_rdev = hbuf.st_rdev;
+-      sbuf->st_size = (long) hbuf.st_size;
++      sbuf->st_size = (off_t) hbuf.st_size;
+       sbuf->st_atime = (time_t) hbuf.st_atime;
+       sbuf->st_spare1 = (long) hbuf.st_spare1;
+       sbuf->st_mtime = (time_t) hbuf.st_mtime;
