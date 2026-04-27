@@ -37,6 +37,7 @@ jobs:
           if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
             sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\\"$(JOBS)\\"/g' Makefile
           fi
+          sed -i 's/# CT_STATIC_TOOLCHAIN is not set/CT_STATIC_TOOLCHAIN=y/' .config
 
       - name: Install dependencies
         run: |
@@ -74,7 +75,7 @@ jobs:
 
       - name: Pack toolchain
         run: |
-          name="toolchain-${{ matrix.channel }}-ubuntu-22.04-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-${{ matrix.channel }}-static-ubuntu-22.04-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           make pack ARTIFACT_NAME="$name"
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
@@ -113,6 +114,7 @@ jobs:
           if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
             sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\\"$(JOBS)\\"/g' Makefile
           fi
+          sed -i 's/# CT_STATIC_TOOLCHAIN is not set/CT_STATIC_TOOLCHAIN=y/' .config
 
       - name: Cache tarballs
         uses: actions/cache@v4
@@ -138,7 +140,7 @@ jobs:
 
       - name: Build and pack toolchain
         run: |
-          name="toolchain-${{ matrix.channel }}-alpine-3.23-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-${{ matrix.channel }}-static-alpine-3.23-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           docker run --rm \
             -e ARTIFACT_NAME="$name" \
             -v "$GITHUB_WORKSPACE:/workspace" \
@@ -198,7 +200,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: toolchains-${{ env.TAG_NAME }}-stable-edge-ubuntu22.04-alpine3.23-x86_64-arm64
+          name: toolchains-${{ env.TAG_NAME }}-stable-edge-static-ubuntu22.04-alpine3.23-x86_64-arm64
           draft: ${{ github.event.release.draft || false }}
           prerelease: ${{ github.event.release.prerelease || false }}
           files: dist/**/toolchain-*.tar.xz
