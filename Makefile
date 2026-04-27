@@ -44,6 +44,8 @@ install-deps-ubuntu:
 
 install-deps-alpine:
 	apk add --no-cache \
+		autoconf \
+		automake \
 		bash \
 		bison \
 		build-base \
