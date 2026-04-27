@@ -67,7 +67,6 @@ jobs:
   build-alpine:
     name: Build (alpine-3.23-${{ matrix.host_arch }})
     runs-on: ${{ matrix.runs_on }}
-    container: alpine:3.23
     strategy:
       fail-fast: false
       matrix:
@@ -78,19 +77,6 @@ jobs:
             runs_on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install make
-        run: apk add --no-cache make
-
-      - name: Install dependencies
-        run: |
-          make install-deps-alpine
-          make install-ctng SUDO=
-
-      - name: Prepare non-root user
-        run: |
-          adduser -D -h /home/builder builder
-          chown -R builder:builder "$GITHUB_WORKSPACE"
 
       - name: Cache tarballs
         uses: actions/cache@v4
@@ -114,13 +100,23 @@ jobs:
           echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
           echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
 
-      - name: Build toolchain
-        run: su -s /bin/sh builder -c "make toolchain"
-
-      - name: Pack toolchain
+      - name: Build and pack toolchain
         run: |
           name="toolchain-alpine-3.23-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
-          make pack ARTIFACT_NAME="$name"
+          docker run --rm \
+            -e ARTIFACT_NAME="$name" \
+            -v "$GITHUB_WORKSPACE:/workspace" \
+            -w /workspace \
+            alpine:3.23 \
+            /bin/sh -c '
+              apk add --no-cache make &&
+              make install-deps-alpine &&
+              make install-ctng SUDO= &&
+              adduser -D -h /home/builder builder &&
+              chown -R builder:builder /workspace &&
+              su -s /bin/sh builder -c "make toolchain" &&
+              make pack ARTIFACT_NAME="$ARTIFACT_NAME"
+            '
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
       - name: Upload artifact
