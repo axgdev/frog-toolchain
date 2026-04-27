@@ -9,29 +9,49 @@ on:
 
 jobs:
   build-ubuntu:
-    name: Build (ubuntu-24.04-${{ matrix.host_arch }})
+    name: Build (${{ matrix.channel }}-ubuntu-22.04-${{ matrix.host_arch }})
     runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - host_arch: x86_64
-            runs_on: ubuntu-24.04
-          - host_arch: arm64
-            runs_on: ubuntu-24.04-arm
+          - channel: edge
+            toolchain_ref: ''
+            host_arch: x86_64
+            runs_on: ubuntu-22.04
+          - channel: edge
+            toolchain_ref: ''
+            host_arch: arm64
+            runs_on: ubuntu-22.04-arm
+          - channel: stable
+            toolchain_ref: v1.0.0
+            host_arch: arm64
+            runs_on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.toolchain_ref || github.ref }}
+
+      - name: Normalize CI config
+        run: |
+          if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
+            sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\\"$(JOBS)\\"/g' Makefile
+          fi
 
       - name: Install dependencies
         run: |
           make install-deps-ubuntu
-          make install-ctng
+          if grep -q '^install-ctng:' Makefile; then
+            make install-ctng
+          else
+            make install-ctng-ubuntu
+          fi
 
       - name: Cache tarballs
         uses: actions/cache@v4
         with:
           path: .tarballs
-          key: tarballs-${{ runner.os }}-${{ runner.arch }}-ubuntu-${{ hashFiles('.config') }}
+          key: tarballs-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-ubuntu-${{ hashFiles('.config') }}
 
       - name: Read versions
         id: vers
@@ -54,7 +74,7 @@ jobs:
 
       - name: Pack toolchain
         run: |
-          name="toolchain-ubuntu-24.04-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-${{ matrix.channel }}-ubuntu-22.04-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           make pack ARTIFACT_NAME="$name"
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
@@ -65,24 +85,40 @@ jobs:
           path: ${{ env.ARTIFACT_NAME }}
 
   build-alpine:
-    name: Build (alpine-3.23-${{ matrix.host_arch }})
+    name: Build (${{ matrix.channel }}-alpine-3.23-${{ matrix.host_arch }})
     runs-on: ${{ matrix.runs_on }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - host_arch: x86_64
-            runs_on: ubuntu-24.04
-          - host_arch: arm64
-            runs_on: ubuntu-24.04-arm
+          - channel: edge
+            toolchain_ref: ''
+            host_arch: x86_64
+            runs_on: ubuntu-22.04
+          - channel: edge
+            toolchain_ref: ''
+            host_arch: arm64
+            runs_on: ubuntu-22.04-arm
+          - channel: stable
+            toolchain_ref: v1.0.0
+            host_arch: arm64
+            runs_on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.toolchain_ref || github.ref }}
+
+      - name: Normalize CI config
+        run: |
+          if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
+            sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\\"$(JOBS)\\"/g' Makefile
+          fi
 
       - name: Cache tarballs
         uses: actions/cache@v4
         with:
           path: .tarballs
-          key: tarballs-${{ runner.os }}-${{ runner.arch }}-alpine-${{ hashFiles('.config') }}
+          key: tarballs-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-alpine-${{ hashFiles('.config') }}
 
       - name: Read versions
         id: vers
@@ -102,7 +138,7 @@ jobs:
 
       - name: Build and pack toolchain
         run: |
-          name="toolchain-alpine-3.23-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-${{ matrix.channel }}-alpine-3.23-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           docker run --rm \
             -e ARTIFACT_NAME="$name" \
             -v "$GITHUB_WORKSPACE:/workspace" \
@@ -111,7 +147,9 @@ jobs:
             /bin/sh -c '
               apk add --no-cache make &&
               make install-deps-alpine &&
-              make install-ctng SUDO= &&
+              if grep -q "^install-ctng:" Makefile; then
+                make install-ctng SUDO=
+              fi &&
               adduser -D -h /home/builder builder &&
               chown -R builder:builder /workspace &&
               su -s /bin/sh builder -c "make toolchain" &&
@@ -160,7 +198,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: toolchains-${{ env.TAG_NAME }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}-ubuntu24.04-alpine3.23-x86_64-arm64
+          name: toolchains-${{ env.TAG_NAME }}-stable-edge-ubuntu22.04-alpine3.23-x86_64-arm64
           draft: ${{ github.event.release.draft || false }}
           prerelease: ${{ github.event.release.prerelease || false }}
           files: dist/**/toolchain-*.tar.xz
