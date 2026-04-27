@@ -5,11 +5,13 @@ CONFIG ?= .config
 JOBS ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 SUDO ?= sudo
 CTNG_VER ?= 1.28.0
+CTNG_REF ?= d04b73234f716e0d473aa059cf4c812d18703ac6
 CTNG_SRC_DIR ?= $(TOPDIR)/.ctng-src
-CTNG_TARBALL ?= $(CTNG_SRC_DIR)/crosstool-ng-$(CTNG_VER).tar.xz
-CTNG_URL ?= https://github.com/crosstool-ng/crosstool-ng/releases/download/crosstool-ng-$(CTNG_VER)/crosstool-ng-$(CTNG_VER).tar.xz
+CTNG_GIT_DIR ?= $(CTNG_SRC_DIR)/crosstool-ng
+CTNG_TARBALL ?= $(CTNG_SRC_DIR)/crosstool-ng-$(CTNG_REF).tar.gz
+CTNG_URL ?= https://github.com/crosstool-ng/crosstool-ng/archive/$(CTNG_REF).tar.gz
 
-.PHONY: install-deps-ubuntu install-deps-alpine install-ctng-ubuntu \
+.PHONY: install-deps-ubuntu install-deps-alpine install-ctng \
 	ci-prepare oldconfig build toolchain pack
 
 install-deps-ubuntu:
@@ -45,12 +47,12 @@ install-deps-alpine:
 		bash \
 		bison \
 		build-base \
-		crosstool-ng \
 		file \
 		flex \
 		gawk \
 		git \
 		gperf \
+		help2man \
 		libtool \
 		make \
 		ncurses-dev \
@@ -64,19 +66,18 @@ install-deps-alpine:
 		xz \
 		zlib-dev
 
-install-ctng-ubuntu:
-	@if command -v ct-ng >/dev/null 2>&1; then \
-		ct-ng --version; \
-		exit 0; \
-	fi
+install-ctng:
 	@mkdir -p $(CTNG_SRC_DIR)
 	@wget -q -O $(CTNG_TARBALL) $(CTNG_URL)
-	@tar -xf $(CTNG_TARBALL) -C $(CTNG_SRC_DIR)
-	@cd $(CTNG_SRC_DIR)/crosstool-ng-$(CTNG_VER) && \
+	@rm -rf $(CTNG_GIT_DIR)
+	@mkdir -p $(CTNG_GIT_DIR)
+	@tar -xf $(CTNG_TARBALL) -C $(CTNG_GIT_DIR) --strip-components=1
+	@cd $(CTNG_GIT_DIR) && \
+		./bootstrap && \
 		./configure --prefix=/usr/local && \
 		make -j$(JOBS) && \
 		$(SUDO) make install
-	@ct-ng --version
+	@ct-ng version
 
 ci-prepare:
 	sed -i \

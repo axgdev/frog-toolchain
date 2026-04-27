@@ -1,0 +1,20 @@
+diff --git a/libgloss/mips/cfe_mem.c b/libgloss/mips/cfe_mem.c
+index 0fb4d7e..7cc31b5 100644
+--- a/libgloss/mips/cfe_mem.c
++++ b/libgloss/mips/cfe_mem.c
+@@ -31,6 +31,7 @@
+  *    BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+  */
+ 
++#include <stdint.h>
+ #include "cfe_api.h"
+ 
+ /* Structure filled in by get_mem_info.  Only the size field is
+@@ -123,6 +124,6 @@ __libcfe_stack_top (void)
+ void *
+ get_mem_info (struct s_mem *meminfo)
+ {
+-  meminfo->size = (char *)(memtop - stack_size) - _end;
++  meminfo->size = (unsigned int)(((uintptr_t)memtop - stack_size) - (uintptr_t)_end);
+   return (void *) memtop;
+ }

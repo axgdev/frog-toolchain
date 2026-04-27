@@ -8,27 +8,38 @@ on:
     types: [created]
 
 jobs:
-  build-glibc:
-    name: Build (ubuntu-glibc)
-    runs-on: ubuntu-22.04
+  build-ubuntu:
+    name: Build (ubuntu-24.04-${{ matrix.host_arch }})
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_arch: x86_64
+            runs_on: ubuntu-24.04
+          - host_arch: arm64
+            runs_on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
           make install-deps-ubuntu
-          make install-ctng-ubuntu
+          make install-ctng
 
       - name: Cache tarballs
         uses: actions/cache@v4
         with:
           path: .tarballs
-          key: tarballs-${{ runner.os }}-glibc-${{ hashFiles('.config') }}
+          key: tarballs-${{ runner.os }}-${{ runner.arch }}-ubuntu-${{ hashFiles('.config') }}
 
       - name: Read versions
         id: vers
         run: |
-          gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          gcc_ver=$(sed -n 's/^CT_GCC_VERSION="\(.*\)"/\1/p' .config)
+          if [ -z "$gcc_ver" ]; then
+            gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          fi
           bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
           newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
           if [ -z "$newlib_ver" ]; then
@@ -43,7 +54,7 @@ jobs:
 
       - name: Pack toolchain
         run: |
-          name="toolchain-ubuntu-22.04-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-ubuntu-24.04-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           make pack ARTIFACT_NAME="$name"
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
@@ -53,10 +64,18 @@ jobs:
           name: ${{ env.ARTIFACT_NAME }}
           path: ${{ env.ARTIFACT_NAME }}
 
-  build-musl:
-    name: Build (alpine-musl)
-    runs-on: ubuntu-latest
+  build-alpine:
+    name: Build (alpine-3.23-${{ matrix.host_arch }})
+    runs-on: ${{ matrix.runs_on }}
     container: alpine:3.23
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - host_arch: x86_64
+            runs_on: ubuntu-24.04
+          - host_arch: arm64
+            runs_on: ubuntu-24.04-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -64,7 +83,9 @@ jobs:
         run: apk add --no-cache make
 
       - name: Install dependencies
-        run: make install-deps-alpine
+        run: |
+          make install-deps-alpine
+          make install-ctng SUDO=
 
       - name: Prepare non-root user
         run: |
@@ -75,12 +96,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .tarballs
-          key: tarballs-${{ runner.os }}-musl-${{ hashFiles('.config') }}
+          key: tarballs-${{ runner.os }}-${{ runner.arch }}-alpine-${{ hashFiles('.config') }}
 
       - name: Read versions
         id: vers
         run: |
-          gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          gcc_ver=$(sed -n 's/^CT_GCC_VERSION="\(.*\)"/\1/p' .config)
+          if [ -z "$gcc_ver" ]; then
+            gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          fi
           bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
           newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
           if [ -z "$newlib_ver" ]; then
@@ -95,7 +119,7 @@ jobs:
 
       - name: Pack toolchain
         run: |
-          name="toolchain-alpine-3.23-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-alpine-3.23-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           make pack ARTIFACT_NAME="$name"
           echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
 
@@ -108,8 +132,8 @@ jobs:
   release:
     name: Publish Release
     needs:
-      - build-glibc
-      - build-musl
+      - build-ubuntu
+      - build-alpine
     runs-on: ubuntu-latest
     env:
       TAG_NAME: ${{ github.event.release.tag_name }}
@@ -119,7 +143,10 @@ jobs:
       - name: Read versions
         id: vers
         run: |
-          gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          gcc_ver=$(sed -n 's/^CT_GCC_VERSION="\(.*\)"/\1/p' .config)
+          if [ -z "$gcc_ver" ]; then
+            gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
+          fi
           bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
           newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
           if [ -z "$newlib_ver" ]; then
@@ -137,7 +164,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: toolchains-${{ env.TAG_NAME }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}-ubuntu22.04-alpine3.23
+          name: toolchains-${{ env.TAG_NAME }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}-ubuntu24.04-alpine3.23-x86_64-arm64
           draft: ${{ github.event.release.draft || false }}
           prerelease: ${{ github.event.release.prerelease || false }}
           files: dist/**/toolchain-*.tar.xz

@@ -1,0 +1,13 @@
+diff --git a/libgloss/mips/test.c b/libgloss/mips/test.c
+index 0f35501..2d356b5 100644
+--- a/libgloss/mips/test.c
++++ b/libgloss/mips/test.c
+@@ -1,7 +1,7 @@
+ extern int outbyte(unsigned char byte);
+ extern void print (const char *);
+ 
+-int main()
++int main(void)
+ {
+   outbyte ('&');
+   outbyte ('@');
