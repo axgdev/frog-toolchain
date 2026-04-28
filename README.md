@@ -28,24 +28,26 @@ Output:
 - Toolchain is installed under `x-tools/` in this repo.
 - Downloaded tarballs are cached in `.tarballs/`.
 
-## GitHub Actions builds
+## GitHub Actions Builds
 
-The workflow builds four host variants and publishes a release with the artifacts:
-- Ubuntu 24.04 x86_64
-- Ubuntu 24.04 arm64
-- Alpine 3.23 x86_64
-- Alpine 3.23 arm64
+The workflow builds static Alpine host toolchains and publishes a release with
+the artifacts:
+- edge Alpine 3.23 x86_64
+- edge Alpine 3.23 arm64
+- stable Alpine 3.23 x86_64
+- stable Alpine 3.23 arm64
 
 The workflow is triggered by **creating a GitHub release** (draft or published).
 It uses the release tag for naming.
 
-Artifacts are named with the OS and tool versions from `.config`, for example:
+Artifacts are named with the channel, host architecture, and tool versions from
+`.config`, for example:
 
 ```
-toolchain-ubuntu-24.04-arm64-gcc15.2.0-binutils2.46.0-newlib4.6.0.20260123.tar.xz
+toolchain-edge-static-arm64-gcc15.2.0-binutils2.46.0-newlib4.6.0.20260123.tar.xz
 ```
 
-Release names include the tag and the toolchain versions.
+Release names include the tag, release channels, and host architectures.
 
 To trigger a build:
 - Create a new release in GitHub with tag `vX.Y.Z`.

@@ -8,83 +8,6 @@ on:
     types: [created]
 
 jobs:
-  build-ubuntu:
-    name: Build (${{ matrix.channel }}-ubuntu-22.04-${{ matrix.host_arch }})
-    runs-on: ${{ matrix.runs_on }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - channel: edge
-            toolchain_ref: ''
-            host_arch: x86_64
-            runs_on: ubuntu-22.04
-          - channel: edge
-            toolchain_ref: ''
-            host_arch: arm64
-            runs_on: ubuntu-22.04-arm
-          - channel: stable
-            toolchain_ref: v1.0.0
-            host_arch: arm64
-            runs_on: ubuntu-22.04-arm
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ matrix.toolchain_ref || github.ref }}
-
-      - name: Normalize CI config
-        run: |
-          if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
-            sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\\"$(JOBS)\\"/g' Makefile
-          fi
-          sed -i 's/# CT_STATIC_TOOLCHAIN is not set/CT_STATIC_TOOLCHAIN=y/' .config
-
-      - name: Install dependencies
-        run: |
-          make install-deps-ubuntu
-          if grep -q '^install-ctng:' Makefile; then
-            make install-ctng
-          else
-            make install-ctng-ubuntu
-          fi
-
-      - name: Cache tarballs
-        uses: actions/cache@v4
-        with:
-          path: .tarballs
-          key: tarballs-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-ubuntu-${{ hashFiles('.config') }}
-
-      - name: Read versions
-        id: vers
-        run: |
-          gcc_ver=$(sed -n 's/^CT_GCC_VERSION="\(.*\)"/\1/p' .config)
-          if [ -z "$gcc_ver" ]; then
-            gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
-          newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
-          if [ -z "$newlib_ver" ]; then
-            newlib_ver=$(sed -n 's/^CT_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          echo "gcc=$gcc_ver" >> "$GITHUB_OUTPUT"
-          echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
-          echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
-
-      - name: Build toolchain
-        run: make toolchain
-
-      - name: Pack toolchain
-        run: |
-          name="toolchain-${{ matrix.channel }}-static-ubuntu-22.04-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
-          make pack ARTIFACT_NAME="$name"
-          echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ${{ env.ARTIFACT_NAME }}
-
   build-alpine:
     name: Build (${{ matrix.channel }}-alpine-3.23-${{ matrix.host_arch }})
     runs-on: ${{ matrix.runs_on }}
@@ -102,6 +25,10 @@ jobs:
             runs_on: ubuntu-22.04-arm
           - channel: stable
             toolchain_ref: v1.0.0
+            host_arch: x86_64
+            runs_on: ubuntu-22.04
+          - channel: stable
+            toolchain_ref: v1.0.0
             host_arch: arm64
             runs_on: ubuntu-22.04-arm
     steps:
@@ -120,7 +47,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .tarballs
-          key: tarballs-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-alpine-${{ hashFiles('.config') }}
+          key: tarballs-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-alpine-3.23-${{ hashFiles('.config') }}
 
       - name: Read versions
         id: vers
@@ -140,7 +67,7 @@ jobs:
 
       - name: Build and pack toolchain
         run: |
-          name="toolchain-${{ matrix.channel }}-static-alpine-3.23-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          name="toolchain-${{ matrix.channel }}-static-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
           docker run --rm \
             -e ARTIFACT_NAME="$name" \
             -v "$GITHUB_WORKSPACE:/workspace" \
@@ -167,9 +94,7 @@ jobs:
 
   release:
     name: Publish Release
-    needs:
-      - build-ubuntu
-      - build-alpine
+    needs: build-alpine
     runs-on: ubuntu-latest
     env:
       TAG_NAME: ${{ github.event.release.tag_name }}
@@ -200,7 +125,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: toolchains-${{ env.TAG_NAME }}-stable-edge-static-ubuntu22.04-alpine3.23-x86_64-arm64
+          name: toolchains-${{ env.TAG_NAME }}-stable-edge-static-x86_64-arm64
           draft: ${{ github.event.release.draft || false }}
           prerelease: ${{ github.event.release.prerelease || false }}
           files: dist/**/toolchain-*.tar.xz
