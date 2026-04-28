@@ -1,0 +1,27 @@
+diff --git a/libgloss/mips/Makefile.in b/libgloss/mips/Makefile.in
+index 6a60f10..b6a1197 100644
+--- a/libgloss/mips/Makefile.in
++++ b/libgloss/mips/Makefile.in
+@@ -178,19 +178,11 @@ YAMONOBJS = yamon_read.o yamon_write.o yamon_exit.o yamon_close.o \
+   yamon_fstat.o yamon_exception.o
+ 
+ HALOBJ = mips_clean_cache.o mips_flush_cache.o mips_l2size.o \
+-  mips_lock_cache.o mips_size_cache.o mips_sync_cache.o \
+-  mips_fp.o \
+-  mips_excpt_entry.o mips_excpt_handler.o mips_excpt_handler_quiet.o \
+-  mips_excpt_register.o mips_excpt_boot.o \
+-  mips_intctrl.o $(ISROBJS)
++  mips_lock_cache.o mips_size_cache.o
+ 
+-HALOBJ += mips_tlb.o
++BOOTOBJ =
+ 
+-HALOBJ += mips64_tlb.o mips_xpa.o mips_msa.o
+-
+-BOOTOBJ = reset.o init_cp0.o init_caches.o init_tlb.o init_l23caches.o
+-
+-CM3OBJ_IMPL = mips_cm3_l2size.o init_cm3l2.o
++CM3OBJ_IMPL =
+ 
+ CM3AR = libcm3.a
+ 
