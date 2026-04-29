@@ -64,6 +64,13 @@ jobs:
           echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
           echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
 
+      - name: Validate selected local patches
+        run: |
+          patch_dir="patches/newlib/${{ steps.vers.outputs.newlib }}"
+          test -d "$patch_dir"
+          echo "Using local newlib patches from $patch_dir"
+          find "$patch_dir" -maxdepth 1 -type f -name '*.patch' | sort
+
       - name: Build and pack toolchain
         run: |
           name="toolchain-${{ matrix.channel }}-static-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
