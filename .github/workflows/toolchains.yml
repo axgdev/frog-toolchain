@@ -36,7 +36,9 @@ jobs:
 
       - name: Normalize CI config
         run: |
-          cp "${{ matrix.config_file }}" .config
+          if [ "${{ matrix.config_file }}" != ".config" ]; then
+            cp "${{ matrix.config_file }}" .config
+          fi
           if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
             sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\\"$(JOBS)\\"/g' Makefile
           fi
