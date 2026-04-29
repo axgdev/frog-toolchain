@@ -16,28 +16,27 @@ jobs:
       matrix:
         include:
           - channel: edge
-            toolchain_ref: ''
+            config_file: .config
             host_arch: x86_64
             runs_on: ubuntu-22.04
           - channel: edge
-            toolchain_ref: ''
+            config_file: .config
             host_arch: arm64
             runs_on: ubuntu-22.04-arm
           - channel: stable
-            toolchain_ref: v1.0.0
+            config_file: .config.stable-v1.0.0
             host_arch: x86_64
             runs_on: ubuntu-22.04
           - channel: stable
-            toolchain_ref: v1.0.0
+            config_file: .config.stable-v1.0.0
             host_arch: arm64
             runs_on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ matrix.toolchain_ref || github.ref }}
 
       - name: Normalize CI config
         run: |
+          cp "${{ matrix.config_file }}" .config
           if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
             sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\\"$(JOBS)\\"/g' Makefile
           fi

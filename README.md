@@ -37,6 +37,11 @@ the artifacts:
 - stable Alpine 3.23 x86_64
 - stable Alpine 3.23 arm64
 
+`edge` is built from `.config`. `stable` is built from
+`.config.stable-v1.0.0`, which preserves the v1.0.0 toolchain component
+versions while still producing current static Alpine host artifacts for both
+x86_64 and arm64.
+
 The workflow is triggered by **creating a GitHub release** (draft or published).
 It uses the release tag for naming.
 
@@ -45,6 +50,7 @@ Artifacts are named with the channel, host architecture, and tool versions from
 
 ```
 toolchain-edge-static-arm64-gcc15.2.0-binutils2.46.0-newlib4.6.0.20260123.tar.xz
+toolchain-stable-static-arm64-gcc15.2.0-binutils2.45-newlib4.5.0.20241231.tar.xz
 ```
 
 Release names include the tag, release channels, and host architectures.
@@ -55,6 +61,6 @@ To trigger a build:
 
 ## Notes
 
-- The workflow always uses `.config` (no defconfig logic).
-- If you change `.config`, keep it committed so the CI artifacts include the
-  correct version strings.
+- The workflow uses `.config` for edge and `.config.stable-v1.0.0` for stable.
+- If you change either config, keep it committed so the CI artifacts include
+  the correct version strings.
