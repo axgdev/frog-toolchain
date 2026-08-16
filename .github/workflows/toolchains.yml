@@ -31,12 +31,12 @@ jobs:
             config_file: .config.stable-v1.0.0
             host_arch: arm64
             runs_on: ubuntu-22.04-arm
-          - channel: bootloader
-            config_file: .config.sf2000-bootloader
+          - channel: nuttx
+            config_file: .config.nuttx
             host_arch: x86_64
             runs_on: ubuntu-22.04
-          - channel: bootloader
-            config_file: .config.sf2000-bootloader
+          - channel: nuttx
+            config_file: .config.nuttx
             host_arch: arm64
             runs_on: ubuntu-22.04-arm
     steps:
@@ -146,7 +146,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: toolchains-${{ env.TAG_NAME }}-stable-edge-bootloader-static-x86_64-arm64
+          name: toolchains-${{ env.TAG_NAME }}-stable-edge-nuttx-static-x86_64-arm64
           draft: ${{ github.event.release.draft || false }}
           prerelease: ${{ github.event.release.prerelease || false }}
           files: dist/**/toolchain-*.tar.xz
