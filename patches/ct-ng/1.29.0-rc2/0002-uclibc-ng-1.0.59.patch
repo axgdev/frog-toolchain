@@ -1,0 +1,24 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: frog-toolchain <frog-toolchain@example.invalid>
+Subject: [PATCH] uclibc-ng: add 1.0.59 to the version list
+
+Add uClibc-ng 1.0.59 as a released version. bootstrap scans
+packages/uClibc-ng/<version>/version.desc to generate both the
+kconfig version list and maintainer/package-versions, so a released
+1.0.59 makes crosstool-ng fetch the release tarball and apply the
+per-version patches from the standard packages/uclibc-ng/1.0.59
+local patch directory (DEVEL sources bypass that directory).
+The SF2000 Linux build needs 1.0.59 for the static-PIE no-MMU
+configuration (MAP_UNINITIALIZED / getconf / NOMMU-static-PIE fixes).
+---
+--- a/packages/uClibc-ng/1.0.59/chksum
++++ b/packages/uClibc-ng/1.0.59/chksum
+@@ -0,0 +1,4 @@
++md5 uClibc-ng-1.0.59.tar.xz 351795a782f4f322b60b65a3cefd687d
++sha1 uClibc-ng-1.0.59.tar.xz 445a9ebebb231b1a8d90ad1b9256883330983420
++sha256 uClibc-ng-1.0.59.tar.xz 86c6f15971bfb14156850f2e36906dac5a69df7b3e688216d1aea09d2db54174
++sha512 uClibc-ng-1.0.59.tar.xz 4876873920cced5f5521325502e258b0d2438bb7d5f2c4aca39962bbcd6bef730c5ddcd39c38e1d117598cabddeda02708f928874d0a92ac206e6bd8cb3f0173
+--- a/packages/uClibc-ng/1.0.59/version.desc
++++ b/packages/uClibc-ng/1.0.59/version.desc
+@@ -0,0 +1 @@
++

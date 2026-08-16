@@ -1,0 +1,33 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: frog-toolchain <frog-toolchain@example.invalid>
+Subject: [PATCH] mips: make MMU selectable and support no-MMU linux tuples
+
+crosstool-ng forces CONFIG_ARCH_USE_MMU for MIPS, which makes it
+impossible to build the no-MMU uclibc static-PIE configuration used by
+the SF2000 Linux target (kernel-assisted static-PIE loader, no MMU).
+Make MIPS MMU support selectable like ARM/RISC-V, and teach the no-MMU
+kernel tuple logic that MIPS uses the plain "linux" tuple.
+
+--- a/config/arch/mips.in
++++ b/config/arch/mips.in
+@@ -4,7 +4,7 @@
+ ## select ARCH_SUPPORTS_32
+ ## select ARCH_SUPPORTS_64
+ ## select ARCH_DEFAULT_32
+-## select ARCH_USE_MMU
++## select ARCH_SUPPORTS_BOTH_MMU
+ ## select ARCH_SUPPORTS_EITHER_ENDIAN
+ ## select ARCH_DEFAULT_BE
+ ## select ARCH_SUPPORTS_WITH_ARCH
+
+--- a/scripts/build/kernel/linux.sh
++++ b/scripts/build/kernel/linux.sh
+@@ -9,7 +9,7 @@
+         # while others must have a -linux tuple.  Other targets
+         # should be added here when someone starts to care about them.
+         case "${CT_ARCH}" in
+-            arm*|microblaze*)   CT_TARGET_KERNEL="linux" ;;
++            arm*|microblaze*|mips*) CT_TARGET_KERNEL="linux" ;;
+             c6x|m68k|xtensa*)   CT_TARGET_KERNEL="uclinux" ;;
+             *)                  CT_Abort "Unsupported no-mmu arch '${CT_ARCH}'"
+         esac
