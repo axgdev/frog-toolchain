@@ -36,11 +36,22 @@ the artifacts:
 - edge Alpine 3.23 arm64
 - stable Alpine 3.23 x86_64
 - stable Alpine 3.23 arm64
+- nuttx Alpine 3.23 x86_64
+- nuttx Alpine 3.23 arm64
 
 `edge` is built from `.config`. `stable` is built from
 `.config.stable-v1.0.0`, which preserves the v1.0.0 toolchain component
 versions while still producing current static Alpine host artifacts for both
 x86_64 and arm64.
+
+`nuttx` is built from `.config.nuttx`, a minimal bare-metal config for NuttX
+and the applications built on top of it. NuttX ships its own libc in-tree, so
+this config drops newlib entirely; only binutils + GCC (C and C++ frontends)
++ libgcc are produced, which is all NuttX links against. NuttX builds its own
+C++ runtime (libcxx/libcxxabi) in-tree, so the toolchain's libstdc++ is not
+needed either. This makes the toolchain significantly faster to compile
+while producing the same `mipsel-mti-elf` compiler tuple and static ELF
+output.
 
 The workflow is triggered by **creating a GitHub release** (draft or published).
 It uses the release tag for naming.
@@ -51,6 +62,7 @@ Artifacts are named with the channel, host architecture, and tool versions from
 ```
 toolchain-edge-static-arm64-gcc15.2.0-binutils2.46.0-newlib4.6.0.20260123.tar.xz
 toolchain-stable-static-arm64-gcc15.2.0-binutils2.45-newlib4.5.0.20241231.tar.xz
+toolchain-nuttx-static-arm64-gcc15.2.0-binutils2.45-nolibc.tar.xz
 ```
 
 Release names include the tag, release channels, and host architectures.
@@ -61,6 +73,7 @@ To trigger a build:
 
 ## Notes
 
-- The workflow uses `.config` for edge and `.config.stable-v1.0.0` for stable.
-- If you change either config, keep it committed so the CI artifacts include
+- The workflow uses `.config` for edge, `.config.stable-v1.0.0` for stable,
+  and `.config.nuttx` for nuttx.
+- If you change any config, keep it committed so the CI artifacts include
   the correct version strings.

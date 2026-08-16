@@ -31,6 +31,14 @@ jobs:
             config_file: .config.stable-v1.0.0
             host_arch: arm64
             runs_on: ubuntu-22.04-arm
+          - channel: nuttx
+            config_file: .config.nuttx
+            host_arch: x86_64
+            runs_on: ubuntu-22.04
+          - channel: nuttx
+            config_file: .config.nuttx
+            host_arch: arm64
+            runs_on: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v4
 
@@ -67,6 +75,7 @@ jobs:
           echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
 
       - name: Validate selected local patches
+        if: steps.vers.outputs.newlib != ''
         run: |
           patch_dir="patches/newlib/${{ steps.vers.outputs.newlib }}"
           test -d "$patch_dir"
@@ -75,7 +84,11 @@ jobs:
 
       - name: Build and pack toolchain
         run: |
-          name="toolchain-${{ matrix.channel }}-static-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-newlib${{ steps.vers.outputs.newlib }}.tar.xz"
+          libc_label="newlib${{ steps.vers.outputs.newlib }}"
+          if [ -z "${{ steps.vers.outputs.newlib }}" ]; then
+            libc_label="nolibc"
+          fi
+          name="toolchain-${{ matrix.channel }}-static-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-$libc_label.tar.xz"
           docker run --rm \
             -e ARTIFACT_NAME="$name" \
             -v "$GITHUB_WORKSPACE:/workspace" \
@@ -133,7 +146,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG_NAME }}
-          name: toolchains-${{ env.TAG_NAME }}-stable-edge-static-x86_64-arm64
+          name: toolchains-${{ env.TAG_NAME }}-stable-edge-nuttx-static-x86_64-arm64
           draft: ${{ github.event.release.draft || false }}
           prerelease: ${{ github.event.release.prerelease || false }}
           files: dist/**/toolchain-*.tar.xz
