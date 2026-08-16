@@ -36,16 +36,18 @@ the artifacts:
 - edge Alpine 3.23 arm64
 - stable Alpine 3.23 x86_64
 - stable Alpine 3.23 arm64
+- nuttx Alpine 3.23 x86_64
+- nuttx Alpine 3.23 arm64
 
 `edge` is built from `.config`. `stable` is built from
 `.config.stable-v1.0.0`, which preserves the v1.0.0 toolchain component
 versions while still producing current static Alpine host artifacts for both
 x86_64 and arm64.
 
-`nuttx` is built from `.config.nuttx`, a minimal bare-metal config for the
-`sf2000_bootloader` NuttX project. NuttX ships its own libc in-tree, so this
-config drops newlib entirely; only binutils + GCC (C and C++ frontends) +
-libgcc are produced, which is all NuttX links against. NuttX builds its own
+`nuttx` is built from `.config.nuttx`, a minimal bare-metal config for NuttX
+and the applications built on top of it. NuttX ships its own libc in-tree, so
+this config drops newlib entirely; only binutils + GCC (C and C++ frontends)
++ libgcc are produced, which is all NuttX links against. NuttX builds its own
 C++ runtime (libcxx/libcxxabi) in-tree, so the toolchain's libstdc++ is not
 needed either. This makes the toolchain significantly faster to compile
 while producing the same `mipsel-mti-elf` compiler tuple and static ELF
