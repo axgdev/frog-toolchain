@@ -4,8 +4,8 @@ TOPDIR ?= $(CURDIR)
 CONFIG ?= .config
 JOBS ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 SUDO ?= sudo
-CTNG_VER ?= 1.28.0
-CTNG_REF ?= d04b73234f716e0d473aa059cf4c812d18703ac6
+CTNG_VER ?= 1.29.0-rc2
+CTNG_REF ?= d7a90ff11aae5e59d6acd8c491f0297c15b7fa37
 CTNG_SRC_DIR ?= $(TOPDIR)/.ctng-src
 CTNG_GIT_DIR ?= $(CTNG_SRC_DIR)/crosstool-ng
 CTNG_TARBALL ?= $(CTNG_SRC_DIR)/crosstool-ng-$(CTNG_REF).tar.gz
@@ -68,12 +68,18 @@ install-deps-alpine:
 		xz \
 		zlib-dev
 
+CTNG_PATCHES ?= $(wildcard patches/ct-ng/$(CTNG_VER)/*.patch)
+
 install-ctng:
 	@mkdir -p $(CTNG_SRC_DIR)
 	@wget -q -O $(CTNG_TARBALL) $(CTNG_URL)
 	@rm -rf $(CTNG_GIT_DIR)
 	@mkdir -p $(CTNG_GIT_DIR)
 	@tar -xf $(CTNG_TARBALL) -C $(CTNG_GIT_DIR) --strip-components=1
+	@for p in $(CTNG_PATCHES); do \
+		echo "Applying crosstool-ng patch: $$p"; \
+		patch -d $(CTNG_GIT_DIR) -p1 < "$$p" || exit 1; \
+	done
 	@cd $(CTNG_GIT_DIR) && \
 		./bootstrap && \
 		./configure --prefix=/usr/local && \
