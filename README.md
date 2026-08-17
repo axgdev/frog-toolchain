@@ -117,6 +117,23 @@ make -s artifact-name             # the artifact name CI would produce
 make -s channel                   # channel, kernel and libc of the config
 ```
 
+### ccache
+
+Toolchain builds are cached with [ccache](https://ccache.dev) by default
+(the build compiles are run through ccache; crosstool-ng itself has no
+built-in caching). The cache lives in `.ccache` and is persisted across
+CI runs by the workflow, so a release that only changes a patch rebuilds
+mostly from cache. Disable with `make USE_CCACHE=n toolchain`.
+
+The cache is self-validating, so it can never serve stale objects:
+
+- `CCACHE_COMPILERCHECK=content` hashes the compiler binaries, so any
+  rebuild of gcc/binutils (config, crosstool-ng or gcc patch change)
+  invalidates everything compiled with them;
+- source and header content is part of every cache key;
+- in CI the cache is keyed on the config + patches hash, so any change
+  to either starts from a fresh cache.
+
 The Makefile derives everything from the selected config:
 
 - **Channel** from the config file name: `.config` = edge,

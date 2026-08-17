@@ -58,6 +58,35 @@ HOST_ARCH ?= $(shell uname -m | sed -e 's/^aarch64$$/arm64/' -e 's/^x86_64$$/x86
 
 ARTIFACT_NAME ?= toolchain-$(CHANNEL)-static-$(HOST_ARCH)-gcc$(GCC_VERSION)-binutils$(BINUTILS_VERSION)-$(LIBC_LABEL).tar.xz
 
+# Cross compiler prefix (target tuple) as crosstool-ng names the tools,
+# e.g. mipsel-mti-elf / mipsel-unknown-linux-uclibc.  crosstool-ng builds
+# mips little-endian 32-bit as "mipsel" and appends "-elf" for bare-metal
+# or "-linux-uclibc" for the uclibc channel.
+ARCH          ?= $(shell sed -n 's/^CT_ARCH="\(.*\)"/\1/p' $(CONFIG))
+TARGET_VENDOR ?= $(shell sed -n 's/^CT_TARGET_VENDOR="\(.*\)"/\1/p' $(CONFIG))
+ifeq ($(KERNEL),linux)
+TARGET_PREFIX := $(ARCH)el-$(TARGET_VENDOR)-linux-uclibc
+else
+TARGET_PREFIX := $(ARCH)el-$(TARGET_VENDOR)-elf
+endif
+
+# ---------------------------------------------------------------------------
+# ccache (optional, on by default).  Wraps the host and cross compilers so
+# repeated toolchain builds reuse compiled objects.  The cache lives in
+# .ccache and is persisted across CI runs by the workflow's cache step.
+# Disable with: make USE_CCACHE=n toolchain
+# ---------------------------------------------------------------------------
+# The cache is self-validating, so it can never serve stale objects:
+# CCACHE_COMPILERCHECK=content hashes the compiler binary, so rebuilding a
+# compiler (config, ct-ng or gcc patch change) invalidates everything built
+# with it; source and header content is part of every cache key; and in CI
+# the cache is keyed on the config + patches hash, so any of those changes
+# starts from a fresh cache.
+USE_CCACHE ?= y
+CCACHE_DIR ?= $(TOPDIR)/.ccache
+CCACHE_MAXSIZE ?= 2G
+CCACHE_WRAPPER_DIR ?= $(TOPDIR)/.ccache-bin
+
 # Local patch directory for the selected libc (validated by ci-validate).
 PATCH_DIR ?= $(shell if [ -n "$(NEWLIB_VERSION)" ]; then echo newlib/$(NEWLIB_VERSION); \
 	elif [ -n "$(UCLIBC_VERSION)" ]; then echo uClibc-ng/$(UCLIBC_VERSION); fi)
@@ -77,6 +106,7 @@ install-deps-ubuntu:
 		automake \
 		bison \
 		build-essential \
+		ccache \
 		file \
 		flex \
 		gawk \
@@ -105,6 +135,7 @@ install-deps-alpine:
 		bash \
 		bison \
 		build-base \
+		ccache \
 		file \
 		flex \
 		gawk \
@@ -193,7 +224,33 @@ oldconfig:
 	ct-ng oldconfig
 
 build:
-	ct-ng build
+	@if [ "$(CHANNEL)" = "uclibc" ]; then \
+		if ! grep -q "ARCH_SUPPORTS_BOTH_MMU" /usr/local/share/crosstool-ng/config/arch/mips.in 2>/dev/null || \
+		   [ ! -d /usr/local/share/crosstool-ng/packages/uClibc-ng/$(UCLIBC_VERSION) ]; then \
+			echo "ERROR: the uclibc channel needs the patched crosstool-ng (mips MMU + uClibc-ng/$(UCLIBC_VERSION) patches)."; \
+			echo "Run 'make install-ctng' first -- the CI workflow does this in the container."; \
+			exit 1; \
+		fi; \
+	fi
+	@if [ "$(USE_CCACHE)" = "y" ] && command -v ccache >/dev/null 2>&1; then \
+		echo "Building with ccache (cache: $(CCACHE_DIR), max $(CCACHE_MAXSIZE))"; \
+		mkdir -p $(CCACHE_WRAPPER_DIR); \
+		for c in gcc g++ cc c++ $(TARGET_PREFIX)-gcc $(TARGET_PREFIX)-g++; do \
+			ln -sf "$$(command -v ccache)" "$(CCACHE_WRAPPER_DIR)/$$c"; \
+		done; \
+		export PATH="$(CCACHE_WRAPPER_DIR):$$PATH" \
+			CCACHE_DIR="$(CCACHE_DIR)" \
+			CCACHE_BASEDIR="$(TOPDIR)" \
+			CCACHE_COMPILERCHECK="content" \
+			CCACHE_SLOPPINESS="time_macros,file_macro" \
+			CCACHE_MAXSIZE="$(CCACHE_MAXSIZE)"; \
+		ct-ng build; \
+	elif [ "$(USE_CCACHE)" = "y" ]; then \
+		echo "ccache not found; building without it (install ccache or run make install-deps-ubuntu/alpine)"; \
+		ct-ng build; \
+	else \
+		ct-ng build; \
+	fi
 
 toolchain: ci-prepare build
 

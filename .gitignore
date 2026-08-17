@@ -1,5 +1,7 @@
 .build
 *.tar.*
+.ccache
+.ccache-bin
 .channel
 build.log
 .ctng-src/

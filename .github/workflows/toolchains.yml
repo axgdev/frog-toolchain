@@ -62,6 +62,16 @@ jobs:
           path: .tarballs
           key: tarballs-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-alpine-3.23-${{ hashFiles('.config') }}
 
+      # ccache is keyed on the config and all patches: any change to either
+      # starts from a fresh cache.  ccache itself is also self-validating
+      # (compiler content + source hashes), so a stale cache can only ever
+      # cost a miss, never serve a stale object.
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: .ccache
+          key: ccache-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-alpine-3.23-${{ hashFiles('.config', 'patches/**') }}
+
       - name: Compute artifact name
         run: |
           echo "ARTIFACT_NAME=$(make -s artifact-name)" >> "$GITHUB_ENV"
