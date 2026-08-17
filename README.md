@@ -38,7 +38,7 @@ the artifacts:
 - nuttx Alpine 3.23 x86_64 / arm64
 - uclibc Alpine 3.23 x86_64 / arm64
 
-`edge` is built from `.config` (newlib, bare-metal). `stable` is built from
+`edge` is built from `.config.edge` (newlib, bare-metal). `stable` is built from
 `.config.stable-v1.0.0` (newlib, bare-metal, same component versions as edge
 so a release updates every channel at once).
 
@@ -123,6 +123,27 @@ This runs the same docker invocation the GitHub workflow uses (the
 workflow's "Build and pack toolchain" step is literally `make docker-ci
 CONFIG=...`), so what you see locally is what CI runs. Requires docker.
 
+### Chroot-based reproduction (no docker needed)
+
+Environments without docker — including containers that cannot run
+containers inside — can reproduce the CI build in an Alpine minirootfs
+chroot instead. This runs the **same** `ci-in-container` recipe against
+an `alpine:3.23` (musl) environment, so it catches the same
+host-vs-container issues as `docker-ci`. Requires root, `wget`, `rsync`
+and a `chroot` binary on the host:
+
+```sh
+make chroot-init                     # download + extract the Alpine minirootfs
+make chroot-ci CONFIG=.config.uclibc # sync repo into the chroot, build, copy artifact out
+make chroot-clean                    # remove the chroot (tarball + extraction + workspace)
+```
+
+The minirootfs tarball is cached in `.chroot/` (so only the first
+`chroot-init` downloads), but the rootfs is re-extracted and the repo
+re-synced on every `chroot-ci`, giving docker-like freshness. Caches
+(`.ccache`, `.tarballs`) are excluded from the sync, so the chroot flow
+keeps its own warm caches across runs inside the chroot workspace.
+
 Useful helpers:
 
 ```sh
@@ -149,9 +170,13 @@ The cache is self-validating, so it can never serve stale objects:
 
 The Makefile derives everything from the selected config:
 
-- **Channel** from the config file name: `.config` = edge,
+- **Channel** from the config file name: `.config.edge` = edge,
   `.config.stable-v1.0.0` = stable, `.config.nuttx` = nuttx,
   `.config.uclibc` = uclibc.
+
+`make use-config` copies the selected source config into the active
+`.config` (gitignored), which is the only file crosstool-ng reads — so
+local builds never dirty the tracked channel configs.
 - **crosstool-ng patches** are applied only for the `uclibc` channel
   (`make install-ctng` builds stock crosstool-ng otherwise).
 - **Artifact name** from the channel, host architecture, and the gcc,

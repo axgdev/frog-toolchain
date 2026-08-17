@@ -16,11 +16,11 @@ jobs:
       matrix:
         include:
           - channel: edge
-            config_file: .config
+            config_file: .config.edge
             host_arch: x86_64
             runs_on: ubuntu-22.04
           - channel: edge
-            config_file: .config
+            config_file: .config.edge
             host_arch: arm64
             runs_on: ubuntu-22.04-arm
           - channel: stable
