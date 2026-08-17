@@ -60,10 +60,18 @@ a no-MMU static-PIE loader). It uses the newest toolchain components: GCC
 All channels track the latest crosstool-ng versions (GCC 16.2.0, binutils
 2.47, newest libc releases) so a release updates every toolchain at once.
 
+## Channel scoping
+
+The bare-metal channels (`edge`, `stable`, `nuttx`) build a toolchain exactly
+as before: bare-metal kernel (no Linux headers), newlib (or no libc for
+`nuttx`), and **no** uclibc/linux patches. Only the `uclibc` channel uses
+Linux kernel headers, uclibc-ng, and the linux-specific patches below.
+
 ## crosstool-ng patches
 
-`install-ctng` builds crosstool-ng from a pinned commit and applies the
-patches in `patches/ct-ng/<version>/` first:
+`install-ctng` builds crosstool-ng from a pinned commit. In CI, the patches
+in `patches/ct-ng/<version>/` are applied **only for the `uclibc` channel**;
+bare-metal channels build stock crosstool-ng (`CTNG_PATCHES=`):
 
 - `mips: make MMU selectable and support no-MMU linux tuples` — upstream
   crosstool-ng forces MMU on for MIPS, which prevents building the no-MMU
@@ -79,10 +87,12 @@ through crosstool-ng's `CT_LOCAL_PATCH_DIR` mechanism:
 - `patches/newlib/...` — MIPS fixes for the newlib channels.
 - `patches/gcc/16.2.0/0001-mips-support-static-pie-linking.patch` — forwards
   `-static-pie` to `ld` in the MIPS GNU/Linux link spec (needed for the
-  no-MMU static-PIE loader).
+  no-MMU static-PIE loader). Only the `uclibc` channel's gcc build applies
+  it; the bare-metal channels set `CT_GCC_PATCH_ORDER="bundled"` so local
+  gcc patches never touch their builds.
 - `patches/uClibc-ng/1.0.59/...` — no-MMU static-PIE ELF support for MIPS,
   a `MAP_UNINITIALIZED` fallback, and host-`getconf` guards for the Alpine
-  build container.
+  build container (uclibc channel only).
 
 ## GitHub Actions Builds
 
