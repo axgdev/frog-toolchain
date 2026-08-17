@@ -1,5 +1,10 @@
 .build
 *.tar.*
+.ccache
+.ccache-bin
+.channel
+.chroot/
+.config
 build.log
 .ctng-src/
 .tarballs/
