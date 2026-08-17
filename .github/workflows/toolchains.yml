@@ -50,15 +50,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Normalize CI config
-        run: |
-          if [ "${{ matrix.config_file }}" != ".config" ]; then
-            cp "${{ matrix.config_file }}" .config
-          fi
-          if grep -q 'CT_LOAD=$(JOBS)' Makefile; then
-            sed -i 's/CT_LOAD=$(JOBS)/CT_LOAD=\"$(JOBS)\"/g' Makefile
-          fi
-          sed -i 's/# CT_STATIC_TOOLCHAIN is not set/CT_STATIC_TOOLCHAIN=y/' .config
+      # Everything else (channel detection, patch scoping, static-toolchain
+      # switch, artifact naming, validation) lives in the Makefile so the
+      # same targets can be run locally: see the README.
+      - name: Select channel config
+        run: make use-config CONFIG=${{ matrix.config_file }}
 
       - name: Cache tarballs
         uses: actions/cache@v4
@@ -66,77 +62,28 @@ jobs:
           path: .tarballs
           key: tarballs-${{ matrix.channel }}-${{ runner.os }}-${{ runner.arch }}-alpine-3.23-${{ hashFiles('.config') }}
 
-      - name: Read versions
-        id: vers
+      - name: Compute artifact name
         run: |
-          gcc_ver=$(sed -n 's/^CT_GCC_VERSION="\(.*\)"/\1/p' .config)
-          if [ -z "$gcc_ver" ]; then
-            gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
-          newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
-          if [ -z "$newlib_ver" ]; then
-            newlib_ver=$(sed -n 's/^CT_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          src=$(sed -n 's/^CT_UCLIBC_NG_SRC_\(.*\)=y/\1/p' .config)
-          uclibc_ver=""
-          if [ "$src" = "DEVEL" ]; then
-            uclibc_ver=$(sed -n 's/^CT_UCLIBC_NG_DEVEL_BRANCH="\(.*\)"/\1/p' .config)
-          else
-            uclibc_ver=$(sed -n 's/^CT_UCLIBC_NG_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          echo "gcc=$gcc_ver" >> "$GITHUB_OUTPUT"
-          echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
-          echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
-          echo "uclibc=$uclibc_ver" >> "$GITHUB_OUTPUT"
+          echo "ARTIFACT_NAME=$(make -s artifact-name)" >> "$GITHUB_ENV"
 
-      - name: Validate selected local patches
-        run: |
-          patch_dir=""
-          if [ -n "${{ steps.vers.outputs.newlib }}" ]; then
-            patch_dir="patches/newlib/${{ steps.vers.outputs.newlib }}"
-          elif [ -n "${{ steps.vers.outputs.uclibc }}" ]; then
-            patch_dir="patches/uClibc-ng/${{ steps.vers.outputs.uclibc }}"
-          fi
-          if [ -n "$patch_dir" ]; then
-            test -d "$patch_dir"
-            echo "Using local patches from $patch_dir"
-            find "$patch_dir" -maxdepth 1 -type f -name '*.patch' | sort
-          fi
+      - name: Validate local patches
+        run: make ci-validate
 
       - name: Build and pack toolchain
         run: |
-          libc_label="nolibc"
-          if [ -n "${{ steps.vers.outputs.newlib }}" ]; then
-            libc_label="newlib${{ steps.vers.outputs.newlib }}"
-          elif [ -n "${{ steps.vers.outputs.uclibc }}" ]; then
-            libc_label="uclibc-ng${{ steps.vers.outputs.uclibc }}"
-          fi
-          name="toolchain-${{ matrix.channel }}-static-${{ matrix.host_arch }}-gcc${{ steps.vers.outputs.gcc }}-binutils${{ steps.vers.outputs.binutils }}-$libc_label.tar.xz"
           docker run --rm \
-            -e ARTIFACT_NAME="$name" \
             -v "$GITHUB_WORKSPACE:/workspace" \
             -w /workspace \
             alpine:3.23 \
-            /bin/sh -c '
+            /bin/sh -c "
               apk add --no-cache make &&
               make install-deps-alpine &&
-              if grep -q "^install-ctng:" Makefile; then
-                if [ "${{ matrix.channel }}" = "uclibc" ]; then
-                  make install-ctng SUDO=
-                else
-                  echo "Bare-metal ${{ matrix.channel }} channel: building stock crosstool-ng (no uclibc/linux patches)"
-                  make install-ctng SUDO= CTNG_PATCHES=
-                fi
-              fi &&
+              make install-ctng SUDO= &&
               adduser -D -h /home/builder builder &&
               chown -R builder:builder /workspace &&
-              echo "== Building ${{ matrix.channel }} channel ==" &&
-              grep -E "^CT_KERNEL=|^CT_LIBC=" .config &&
-              su -s /bin/sh builder -c "make toolchain" &&
-              make pack ARTIFACT_NAME="$ARTIFACT_NAME"
-            '
-          echo "ARTIFACT_NAME=$name" >> "$GITHUB_ENV"
+              su -s /bin/sh builder -c 'make toolchain' &&
+              make pack
+            "
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -152,31 +99,6 @@ jobs:
       TAG_NAME: ${{ github.event.release.tag_name }}
     steps:
       - uses: actions/checkout@v4
-
-      - name: Read versions
-        id: vers
-        run: |
-          gcc_ver=$(sed -n 's/^CT_GCC_VERSION="\(.*\)"/\1/p' .config)
-          if [ -z "$gcc_ver" ]; then
-            gcc_ver=$(sed -n 's/^CT_CC_GCC_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          bin_ver=$(sed -n 's/^CT_BINUTILS_VERSION="\(.*\)"/\1/p' .config)
-          newlib_ver=$(sed -n 's/^CT_LIBC_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
-          if [ -z "$newlib_ver" ]; then
-            newlib_ver=$(sed -n 's/^CT_NEWLIB_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          src=$(sed -n 's/^CT_UCLIBC_NG_SRC_\(.*\)=y/\1/p' .config)
-          uclibc_ver=""
-          if [ "$src" = "DEVEL" ]; then
-            uclibc_ver=$(sed -n 's/^CT_UCLIBC_NG_DEVEL_BRANCH="\(.*\)"/\1/p' .config)
-          else
-            uclibc_ver=$(sed -n 's/^CT_UCLIBC_NG_VERSION="\(.*\)"/\1/p' .config)
-          fi
-          echo "gcc=$gcc_ver" >> "$GITHUB_OUTPUT"
-          echo "binutils=$bin_ver" >> "$GITHUB_OUTPUT"
-          echo "newlib=$newlib_ver" >> "$GITHUB_OUTPUT"
-          echo "uclibc=$uclibc_ver" >> "$GITHUB_OUTPUT"
-
       - uses: actions/download-artifact@v4
         with:
           path: dist

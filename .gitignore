@@ -1,5 +1,6 @@
 .build
 *.tar.*
+.channel
 build.log
 .ctng-src/
 .tarballs/

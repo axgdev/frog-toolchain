@@ -71,7 +71,9 @@ Linux kernel headers, uclibc-ng, and the linux-specific patches below.
 
 `install-ctng` builds crosstool-ng from a pinned commit. In CI, the patches
 in `patches/ct-ng/<version>/` are applied **only for the `uclibc` channel**;
-bare-metal channels build stock crosstool-ng (`CTNG_PATCHES=`):
+bare-metal channels build stock crosstool-ng. The Makefile derives this
+from the selected channel config, so `make install-ctng` alone does the
+right thing both in CI and locally:
 
 - `mips: make MMU selectable and support no-MMU linux tuples` — upstream
   crosstool-ng forces MMU on for MIPS, which prevents building the no-MMU
@@ -94,10 +96,49 @@ through crosstool-ng's `CT_LOCAL_PATCH_DIR` mechanism:
   a `MAP_UNINITIALIZED` fallback, and host-`getconf` guards for the Alpine
   build container (uclibc channel only).
 
+## Building locally
+
+Everything the GitHub workflow does is a Makefile target, so you can
+reproduce (and debug) the CI build on your own machine:
+
+```sh
+make install-deps-ubuntu          # one-time: host build dependencies
+make use-config CONFIG=.config.uclibc   # select a channel config
+make ci-validate                  # check the local patches for the libc
+make install-ctng                 # crosstool-ng, patched for the channel
+make toolchain                    # full toolchain build (~30-40 min)
+make pack                         # artifact tarball
+```
+
+Useful helpers:
+
+```sh
+make -s artifact-name             # the artifact name CI would produce
+make -s channel                   # channel, kernel and libc of the config
+```
+
+The Makefile derives everything from the selected config:
+
+- **Channel** from the config file name: `.config` = edge,
+  `.config.stable-v1.0.0` = stable, `.config.nuttx` = nuttx,
+  `.config.uclibc` = uclibc.
+- **crosstool-ng patches** are applied only for the `uclibc` channel
+  (`make install-ctng` builds stock crosstool-ng otherwise).
+- **Artifact name** from the channel, host architecture, and the gcc,
+  binutils and libc versions in the config.
+
 ## GitHub Actions Builds
 
 The workflow is triggered by **creating a GitHub release** (draft or
-published). It uses the release tag for naming.
+published) and only calls Makefile targets; there is no workflow-specific
+build logic left to drift out of sync:
+
+1. `make use-config CONFIG=<channel config>` — select the channel.
+2. `make -s artifact-name` — name the artifact.
+3. `make ci-validate` — check the local patches.
+4. In an `alpine:3.23` container: `make install-deps-alpine`,
+   `make install-ctng SUDO=`, then as a non-root `builder` user
+   `make toolchain`, then `make pack`.
 
 Artifacts are named with the channel, host architecture, and tool versions
 from the channel config, for example:
