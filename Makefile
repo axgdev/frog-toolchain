@@ -4,6 +4,7 @@ TOPDIR ?= $(CURDIR)
 CONFIG ?= .config
 JOBS ?= $(shell nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1)
 SUDO ?= sudo
+ALPINE_IMAGE ?= alpine:3.23
 CTNG_VER ?= 1.29.0-rc2
 CTNG_REF ?= d7a90ff11aae5e59d6acd8c491f0297c15b7fa37
 CTNG_SRC_DIR ?= $(TOPDIR)/.ctng-src
@@ -13,7 +14,7 @@ CTNG_URL ?= https://github.com/crosstool-ng/crosstool-ng/archive/$(CTNG_REF).tar
 
 .PHONY: install-deps-ubuntu install-deps-alpine install-ctng \
 	use-config ci-validate ci-prepare oldconfig build toolchain \
-	artifact-name pack channel
+	artifact-name pack channel docker-ci ci-in-container
 
 # ---------------------------------------------------------------------------
 # Channel, versions and artifact naming, derived from the selected config.
@@ -238,21 +239,39 @@ build:
 		for c in gcc g++ cc c++ $(TARGET_PREFIX)-gcc $(TARGET_PREFIX)-g++; do \
 			ln -sf "$$(command -v ccache)" "$(CCACHE_WRAPPER_DIR)/$$c"; \
 		done; \
-		export PATH="$(CCACHE_WRAPPER_DIR):$$PATH" \
-			CCACHE_DIR="$(CCACHE_DIR)" \
-			CCACHE_BASEDIR="$(TOPDIR)" \
-			CCACHE_COMPILERCHECK="content" \
-			CCACHE_SLOPPINESS="time_macros,file_macro" \
-			CCACHE_MAXSIZE="$(CCACHE_MAXSIZE)"; \
-		ct-ng build; \
-	elif [ "$(USE_CCACHE)" = "y" ]; then \
-		echo "ccache not found; building without it (install ccache or run make install-deps-ubuntu/alpine)"; \
-		ct-ng build; \
+		PATH="$(CCACHE_WRAPPER_DIR):$$PATH" \
+		CCACHE_DIR="$(CCACHE_DIR)" \
+		CCACHE_BASEDIR="$(TOPDIR)" \
+		CCACHE_COMPILERCHECK="content" \
+		CCACHE_SLOPPINESS="time_macros,file_macro" \
+		CCACHE_MAXSIZE="$(CCACHE_MAXSIZE)" \
+			ct-ng build; \
 	else \
+		[ "$(USE_CCACHE)" = "y" ] && \
+			echo "ccache not found; building without it (run make install-deps-ubuntu/alpine)"; \
 		ct-ng build; \
 	fi
 
 toolchain: ci-prepare build
+
+# Build exactly as CI does: run the whole toolchain build inside the same
+# alpine container the workflow uses, so a local run reproduces CI (same
+# musl host, same packages) and catches host-vs-container issues early.
+# Requires docker.  Needs the channel config selected first (use-config).
+docker-ci: use-config
+	docker run --rm -v "$(TOPDIR):/workspace" -w /workspace $(ALPINE_IMAGE) \
+		/bin/sh -c 'apk add --no-cache make && make ci-in-container'
+
+# The container-side half of docker-ci: everything the workflow used to
+# inline, in one place.  Runs as root until the actual build, which runs
+# as the unprivileged 'builder' user (crosstool-ng refuses to run as root).
+ci-in-container:
+	make install-deps-alpine
+	make install-ctng SUDO=
+	adduser -D -h /home/builder builder
+	chown -R builder:builder /workspace
+	su -s /bin/sh builder -c 'make toolchain'
+	make pack
 
 pack:
 	tar -C x-tools -cJf "$(ARTIFACT_NAME)" .

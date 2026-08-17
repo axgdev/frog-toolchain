@@ -79,21 +79,12 @@ jobs:
       - name: Validate local patches
         run: make ci-validate
 
+      # The entire container-side build (apk deps, patched/stock ct-ng
+      # install, toolchain build as the unprivileged 'builder' user, pack)
+      # lives in the Makefile's ci-in-container target, so the same docker
+      # invocation can be run locally with: make docker-ci CONFIG=...
       - name: Build and pack toolchain
-        run: |
-          docker run --rm \
-            -v "$GITHUB_WORKSPACE:/workspace" \
-            -w /workspace \
-            alpine:3.23 \
-            /bin/sh -c "
-              apk add --no-cache make &&
-              make install-deps-alpine &&
-              make install-ctng SUDO= &&
-              adduser -D -h /home/builder builder &&
-              chown -R builder:builder /workspace &&
-              su -s /bin/sh builder -c 'make toolchain' &&
-              make pack
-            "
+        run: make docker-ci CONFIG=${{ matrix.config_file }}
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4

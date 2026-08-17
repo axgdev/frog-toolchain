@@ -110,6 +110,19 @@ make toolchain                    # full toolchain build (~30-40 min)
 make pack                         # artifact tarball
 ```
 
+To reproduce the CI build **exactly** (same `alpine:3.23` container and
+commands the workflow runs, catching host-vs-container issues such as
+musl-specific failures early), use `docker-ci` instead of the manual
+steps above. It selects the channel, then runs the container-side build:
+
+```sh
+make docker-ci CONFIG=.config.uclibc
+```
+
+This runs the same docker invocation the GitHub workflow uses (the
+workflow's "Build and pack toolchain" step is literally `make docker-ci
+CONFIG=...`), so what you see locally is what CI runs. Requires docker.
+
 Useful helpers:
 
 ```sh
@@ -153,9 +166,10 @@ build logic left to drift out of sync:
 1. `make use-config CONFIG=<channel config>` — select the channel.
 2. `make -s artifact-name` — name the artifact.
 3. `make ci-validate` — check the local patches.
-4. In an `alpine:3.23` container: `make install-deps-alpine`,
-   `make install-ctng SUDO=`, then as a non-root `builder` user
-   `make toolchain`, then `make pack`.
+4. `make docker-ci CONFIG=<channel config>` — runs the container-side
+   build (`ci-in-container`: apk deps, patched/stock crosstool-ng, the
+   toolchain build as a non-root `builder` user, and pack) inside the
+   same `alpine:3.23` container used by CI.
 
 Artifacts are named with the channel, host architecture, and tool versions
 from the channel config, for example:
