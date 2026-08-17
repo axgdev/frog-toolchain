@@ -122,10 +122,17 @@ jobs:
               apk add --no-cache make &&
               make install-deps-alpine &&
               if grep -q "^install-ctng:" Makefile; then
-                make install-ctng SUDO=
+                if [ "${{ matrix.channel }}" = "uclibc" ]; then
+                  make install-ctng SUDO=
+                else
+                  echo "Bare-metal ${{ matrix.channel }} channel: building stock crosstool-ng (no uclibc/linux patches)"
+                  make install-ctng SUDO= CTNG_PATCHES=
+                fi
               fi &&
               adduser -D -h /home/builder builder &&
               chown -R builder:builder /workspace &&
+              echo "== Building ${{ matrix.channel }} channel ==" &&
+              grep -E '^CT_KERNEL=|^CT_LIBC=' .config &&
               su -s /bin/sh builder -c "make toolchain" &&
               make pack ARTIFACT_NAME="$ARTIFACT_NAME"
             '
