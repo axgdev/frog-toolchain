@@ -132,7 +132,7 @@ jobs:
               adduser -D -h /home/builder builder &&
               chown -R builder:builder /workspace &&
               echo "== Building ${{ matrix.channel }} channel ==" &&
-              grep -E '^CT_KERNEL=|^CT_LIBC=' .config &&
+              grep -E "^CT_KERNEL=|^CT_LIBC=" .config &&
               su -s /bin/sh builder -c "make toolchain" &&
               make pack ARTIFACT_NAME="$ARTIFACT_NAME"
             '
